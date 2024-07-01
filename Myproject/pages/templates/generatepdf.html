@@ -1,0 +1,80 @@
+<!-- templates/pdf_template.html -->
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Performance</title>
+    <style>
+    @page {
+        size: A4;
+        margin: 2.5cm 1.5cm 3.5cm 1.5cm;
+        @top-center {
+            content: "KPLC STAFF PERFORMANCE RANKING FORM IN PDF FORMAT";
+        }
+        @bottom-right {
+            content: "Page " counter(page) " of " counter(pages);
+        }
+    }
+    body {
+        font-family: Arial, sans-serif;
+    }
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .logo {
+        width: 150px; /* Set the width as needed */
+        height: auto; /* Maintain aspect ratio */
+    }
+    h1 {
+        text-align: center;
+        color: green;
+        margin-bottom: 20px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid #ddd;
+        padding: 8px;
+    }
+    th {
+        background-color: #f2f2f2;
+        text-align: left;
+    }
+    </style>
+</head>
+<body>
+    <div class="logo-container">
+        <img src="{% static 'assets/img/kplc.png' %}" alt="KPLC Logo" class="logo">
+    </div>
+    <h1>User Performance</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>User</th>
+                <th>First Name</th>
+                <th>Department</th>
+                <th>Total Score (%)</th>
+                <th>Review Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for review in reviews %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ review.user.username }}</td>
+                <td>{{ review.user.first_name }}</td>
+                <td>{{ review.department.name }}</td>
+                <td>{{ review.calculate_total_score }}</td>
+                <td>{{ review.review_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

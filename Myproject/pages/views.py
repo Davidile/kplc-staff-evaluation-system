@@ -1,38 +1,48 @@
 from django.shortcuts import render,redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .form import Signupform, Add_record
-from .models import Record
+from .form import PerformanceReviewForm
+from .models import PerformanceReview
+from django.http import HttpResponse
+from .models import PerformanceReview
+from django.db.models import F, Value, FloatField
+from django.db.models.functions import Coalesce
+from weasyprint import HTML
+from django.template.loader import render_to_string,get_template
+
+
+
 
 # Create your views here.
 def landing_page(request):
-    return render(request,"index.html")
+    return render(request,"base.html")
 
 def home(request):
-    records=Record.objects.all()
-    if request.method=='POST':
-        username=request.POST['username']
-        password=request.POST['password']
-        user=authenticate(request,username=username,password=password)
-        if user is not None:
-            login(request,user)
-            messages.success(request,"You have logged in successfully")
-            return redirect('home')
-        else:
-            messages.success(request,"There was an error please login again")
-            return redirect('home')
-    return render(request,"home.html",{'records':records})
-
-def login_user(request):
-    pass
-
-
+    if request.user.is_authenticated:
+       reviews = PerformanceReview.objects.filter(user=request.user)
+      # reviews = PerformanceReview.objects.all()
+       return render(request, "home.html", {'reviews': reviews})
+    else:
+        if request.method == 'POST':
+            username = request.POST['username']
+            password = request.POST['password']
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                login(request, user)
+                messages.success(request, "You have logged in successfully")
+                return redirect('home')
+            else:
+                messages.error(request, "There was an error, please try again")
+                return render(request, 'home.html')
+        return render(request, "home.html")
+  
 def logout_user(request):
     logout(request)
     messages.success(request,'you have logged out')
-    return redirect('home')
+    return redirect('landing_page')
 
-def register_user(request):
+
+"""def register_user(request):
     if request.method=="POST":
         form=Signupform(request.POST)
         if form.is_valid():
@@ -97,6 +107,39 @@ def update_record(request,pk):
          messages.success(request,"You must be logged in ..")
          return redirect("home")
     
+"""
+
+def add_performance_review(request):
+ if request.user.is_authenticated:
+    if request.method == 'POST':
+        form = PerformanceReviewForm(request.POST)
+        if form.is_valid():
+            performance_review = form.save(commit=False)
+            performance_review.user = request.user
+            if not performance_review.can_review():
+                messages.error(request,"user has been reviewed in the last 120days.")
+                return redirect('home')
+            performance_review.save()
+            messages.success(request,'review added successfully')
+            return redirect('home')
+    else:
+        form = PerformanceReviewForm()
+    return render(request, 'home.html', {'form': form})
+ 
+def track_progress(request):
+    reviews = PerformanceReview.objects.all()
+    sorted_reviews = sorted(reviews, key=lambda review: review.calculate_total_score(), reverse=True)
+    return render(request, 'track_progress.html', {'reviews': sorted_reviews})
 
 
+def generate_pdf(request):
+    reviews = PerformanceReview.objects.all()
+    sorted_reviews = sorted(reviews, key=lambda review: review.calculate_total_score(), reverse=True)
+    template = get_template('generatepdf.html')
+    html = template.render({'reviews': sorted_reviews})
 
+    pdf = HTML(string=html,base_url=request.build_absolute_uri('/')).write_pdf()
+    response = HttpResponse(pdf, content_type='application/pdf')
+    response['Content-Disposition'] = 'inline;attachment; filename="performance_report.pdf"'
+
+    return response
